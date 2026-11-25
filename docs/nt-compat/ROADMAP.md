@@ -28,13 +28,23 @@ implemented yet.
 
 ## Checkpoint after M1 (2026-11-25)
 
-M1 is the latest implemented milestone. `scripts/test-pe.sh` was re-run after
-moving the tree and passes. The M0 boot gate and the live-image serial test
-were not re-run: this machine has no QEMU, kernel headers or ISO. M2 below is
-not started: no PEB, mapping, relocation application or PE execution exists
-yet.
+M1 is complete. `scripts/test-pe.sh` was re-run after moving the tree and
+passes. The M0 boot gate and the live-image serial test were not re-run on this
+machine (no QEMU, kernel headers or ISO); the GitHub Actions ISO job is the
+real-image gate.
 
-## M2 — image mapping, PEB/TEB, first PE execution (next)
+## M2 — image mapping, PEB/TEB, first PE execution (in progress)
+
+M2 mapping groundwork is in `kernel/nt/pe_map.c` and `kernel/nt/nt_peb.c`: a
+page plan with section-overlap and W^X rejection, image copying, base
+relocation application (`ABSOLUTE`, `HIGH`, `LOW`, `HIGHLOW`, `DIR64`), and the
+x64 PEB/TEB offsets and initialization. `scripts/test-pe.sh` now runs both the
+mapping and PEB/TEB host gates under ASan/UBSan.
+
+This is not execution: the module still returns `-ENOEXEC`, no address space is
+allocated, and there is no import thunk or entry transition. M2 is not done.
+
+Design note: [`PEB.md`](PEB.md).
 
 Map sections at their preferred base (or relocate), never map a page writable
 and executable at the same time, build the PEB/TEB and loader data, and enter a
@@ -112,14 +122,15 @@ hiding. Hardware-rooted attestation is expected to be a hard gap; say so.
 
 ## Next three tasks
 
-1. M2 design: pin the PEB/TEB layout and loader data for the reference build
+1. ✅ M2 design: pin the PEB/TEB layout and loader data for the reference build
    from public symbols and `phnt`; write `docs/nt-compat/PEB.md` before mapping
    code.
-2. M2 code: map sections into a new address space with W^X, apply base
-   relocations, and unit-test mapping decisions against the M1 parse (no
-   execution yet).
-3. M2 execution: enter a static hello-world with a loader thunk for
-   `NtWriteFile`, capture its exit status, and make it the M2 gate.
+2. ✅ M2 mapping groundwork: page plan with W^X/overlap rejection, image copy,
+   base-relocation application and PEB/TEB initialization; host-tested against
+   the M1 parse (no execution yet).
+3. M2 execution (next): allocate the address space, map the plan, build an
+   import thunk for `NtWriteFile`, enter a static hello-world, capture its exit
+   status, and make it the M2 gate.
 
 ## Risks
 

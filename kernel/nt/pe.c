@@ -679,6 +679,50 @@ bool pe_reloc_block(const struct pe_image *img, u32 index, u32 *page_rva,
 	return false;
 }
 
+bool pe_reloc_entry(const struct pe_image *img, u32 block, u32 entry,
+		    u32 *rva, u16 *type)
+{
+	u32 size, pos = 0, seen = 0;
+
+	if (!img || !pe_reloc_block(img, block, NULL, NULL))
+		return false;
+	size = img->dir_size[PE_DIR_BASERELOC];
+	while (pos + 8 <= size) {
+		u32 off, page, block_size;
+
+		if (!pe_rva_to_offset(img, img->dir_rva[PE_DIR_BASERELOC] + pos,
+				      8, &off))
+			return false;
+		if (!pe_u32(img, off, &page) ||
+		    !pe_u32(img, off + 4, &block_size))
+			return false;
+		if (block_size < 8 || block_size > size - pos)
+			return false;
+		if (seen == block) {
+			u32 count = (block_size - 8) / 2;
+			u16 raw;
+
+			if (entry >= count)
+				return false;
+			if (!pe_rva_to_offset(img, img->dir_rva[PE_DIR_BASERELOC] +
+					      pos + 8 + entry * 2, 2, &off))
+				return false;
+			if (!pe_u16(img, off, &raw))
+				return false;
+			if ((u64)page + (raw & 0x0fff) > 0xffffffffULL)
+				return false;
+			if (rva)
+				*rva = page + (raw & 0x0fff);
+			if (type)
+				*type = (u16)(raw >> 12);
+			return true;
+		}
+		seen++;
+		pos += block_size;
+	}
+	return false;
+}
+
 bool pe_tls_callback(const struct pe_image *img, u32 index, u64 *va)
 {
 	u32 rva, size, need, psize, i, cb_rva;

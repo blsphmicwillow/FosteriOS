@@ -110,6 +110,10 @@ bool pe_export_name(const struct pe_image *img, u32 index, char *name,
 bool pe_reloc_block(const struct pe_image *img, u32 index, u32 *page_rva,
 		    u32 *entry_count);
 
+/* One relocation entry: absolute RVA and the IMAGE_REL_BASED_* type. */
+bool pe_reloc_entry(const struct pe_image *img, u32 block, u32 entry,
+		    u32 *rva, u16 *type);
+
 /* TLS callback iteration. Returns the callback virtual address. */
 bool pe_tls_callback(const struct pe_image *img, u32 index, u64 *va);
 

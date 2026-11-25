@@ -87,7 +87,7 @@ static int ntp_proc_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "name       ntpersonality\n");
 	seq_printf(m, "version    %s\n", NTP_VERSION);
-	seq_printf(m, "stage      M0 (hooks only, no image loader)\n");
+	seq_printf(m, "stage      M0 hooks; M2 map/PEB library linked, not active\n");
 	seq_printf(m, "linux      %s\n", UTS_RELEASE);
 	seq_printf(m, "pe_seen    %u\n", pe_seen);
 	seq_printf(m, "binfmt     registered\n");
@@ -123,5 +123,5 @@ module_exit(ntp_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Forsteri OS");
-MODULE_DESCRIPTION("NT personality skeleton for FosteriOS (M0)");
+MODULE_DESCRIPTION("NT personality skeleton for FosteriOS (M0; M2 map/PEB library)");
 MODULE_VERSION(NTP_VERSION);

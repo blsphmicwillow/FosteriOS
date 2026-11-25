@@ -10,7 +10,7 @@ KDIR ?= /lib/modules/$(shell uname -r)/build
 PWD  := $(shell pwd)
 
 obj-m += ntpersonality.o
-ntpersonality-y := ntpersonality_main.o pe.o
+ntpersonality-y := ntpersonality_main.o pe.o pe_map.o nt_peb.o
 
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
