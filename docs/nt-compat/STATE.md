@@ -3,80 +3,124 @@
 Updated: 2026-11-25. This file is the honest inventory. It is updated after
 every milestone, with evidence, before the roadmap.
 
-## Verified working (M0)
+## Verified working
 
-Kernel: Linux 7.3.5-arch1-1 (the Forsteri ISO kernel), QEMU TCG, x86-64.
+### M0 — module, proc hook, binfmt hook
 
-Evidence from `build/boot.log` of the M0 gate:
+Kernel: Linux 7.3.5-arch1-1, QEMU TCG, x86-64. Evidence from the M0 gate:
 
 ```
-BOOT-TEST: kernel 7.3.5-arch1-1
 BOOT-TEST: insmod ok
-...
 pe_seen    0
 execve: Exec format error
-...
 pe_seen    1
 BOOT-TEST: binfmt counted the PE
-[    3.469493] ntpersonality: PE image recognised: /test.exe (e_lfanew=128)
+ntpersonality: PE image recognised: /test.exe (e_lfanew=128)
 BOOT-TEST: PASS
 ```
 
-What that demonstrates, precisely:
+That proves module loading, `/proc/forsteri_nt`, PE magic detection through
+`linux_binfmt`, and an honest `ENOEXEC` for an unloadable format. It runs no PE
+code.
 
-- `kernel/nt/ntpersonality.c` compiles against the distribution's headers and
-  loads into the running kernel (self-signed, kernel tainted — expected).
-- `register_binfmt()` links successfully and the handler is invoked for a
-  non-ELF file; the kernel's binfmt list is not the blocker.
-- `/proc/forsteri_nt` reports state and counters, readable from an initramfs.
-- PE magic detection works on a 132-byte synthetic image with `e_lfanew=0x80`.
-- `execve()` of an unhandled format still returns `ENOEXEC`; the module changes
-  nothing about normal execution.
+### M1 — PE/COFF parser
+
+`kernel/nt/pe.c` and `pe.h` parse, without allocation and without trusting the
+input:
+
+- DOS, COFF and optional headers, PE32 and PE32+;
+- section table, with RVA-to-file-offset mapping that requires file backing;
+- import descriptors, DLL names, thunk arrays (named and ordinal imports);
+- export directory, named exports and ordinals;
+- base relocation blocks and entries;
+- TLS directory and callback array.
+
+Evidence from `scripts/test-pe.sh` (ASan + UBSan, `-fno-sanitize-recover=all`):
+
+- `hello.exe` (mingw, 19 sections): machine `0x8664`, PE32+, entry `0x1440`,
+  image base `0x140000000`, 9 import DLLs, 2 relocation blocks, no exports.
+- `libfixture.dll`: 6 import DLLs, 1 named export `forsteri_test_export`,
+  ordinal 1.
+- Mutation table (truncations, bad signatures, huge counts, overflowing RVAs,
+  section ranges outside the file, broken relocation blocks, export-array
+  overruns): every case rejected, no ASan/UBSan reports.
+- `pe-test: PASS`.
+
+The parser is compiled into `ntpersonality.ko` (composite module) so kernel
+context compilation is part of the gate, and the M0 QEMU gate still passes with
+it linked in.
+
+### Live ISO integration
+
+The Forsteri ISO was rebuilt with the module in the live `airootfs` and a
+systemd unit that loads it. A real-image QEMU test (`scripts/test-iso.sh` in the
+distribution tree) boots the ISO's own kernel, initramfs and squashfs with
+`forsteri.nt_test=1`; the serial log shows:
+
+```
+Starting Forsteri NT personality (ntpersonality)...
+[  OK  ] Finished Forsteri NT personality (ntpersonality).
+FORSTERI-NT-TEST: begin (7.3.5-arch1-1)
+FORSTERI-NT-TEST: module loaded
+name       ntpersonality
+version    0.0.1
+stage      M0 (hooks only, no image loader)
+pe_seen    0
+binfmt     registered
+FORSTERI-NT-TEST: PASS
+```
 
 ## What this is not
 
-No Windows binary has been loaded. M0 runs no PE code, maps no image, and knows
-nothing about `ntdll`. The "PE recognised" line means the magic matched; the
-next line of work is the loader.
+No Windows binary has been mapped or executed. M1 parses an image; it does not
+load one. There is no PEB/TEB, no `ntdll`, no NT syscall dispatcher, no object
+manager, no registry, no I/O manager, no driver loading.
 
 ## Missing, in dependency order
 
-1. **PE/COFF parser** beyond the magic: headers, sections, imports, exports,
-   relocations, TLS. Host-side tests with real and malformed images.
-2. **Image mapping** into a new address space, with PEB/TEB and loader data.
-3. **A minimal `ntdll`/`kernel32`** sufficient for a static hello-world.
-4. **NT syscall dispatch**: in-tree patch to the x86-64 entry path, per-task
+1. **Image mapping**: map sections, apply relocations, W^X, build PEB/TEB.
+2. **A minimal `ntdll`/`kernel32`** sufficient for a static hello-world.
+3. **NT syscall dispatch**: in-tree patch to the x86-64 entry path, per-task
    format flag, NT syscall table and coverage tracking. A module cannot do this
-   (equal `syscall` instruction, colliding numbers).
-5. **Object manager**: NT namespace, object types, handles, reference counts.
-6. **Tokens/SIDs/ACLs** over Linux credentials and LSM hooks.
-7. **Registry**: hive parsing and a key tree; decide kernel service vs userland
-   broker.
-8. **I/O manager**: IRPs, device objects, `DriverEntry`, WDM dispatch; later a
-   KMDF subset and PE `.sys` loading in kernel.
-9. **Memory manager semantics**: section objects, protection, MDLs, paging
+   (same `syscall` instruction, colliding numbers).
+4. **Object manager**: NT namespace, object types, handles, reference counts.
+5. **Tokens/SIDs/ACLs** over Linux credentials and LSM hooks.
+6. **Registry**: hive parsing and a key tree; decide kernel service vs userland
+   broker in M5 (design the object-manager interface so either fits).
+7. **I/O manager**: IRPs, device objects, `DriverEntry`, WDM dispatch; later a
+   KMDF subset and kernel-side PE `.sys` loading.
+8. **Memory manager semantics**: section objects, protection, MDLs, paging
    behaviour visible to drivers and `Nt*` calls.
-10. **`ntoskrnl`/`hal` export shim** driven by the imports of the drivers under
-    test.
-11. **Graphics/audio**: DXVK/VKD3D-style userland translation, once Win32
+9. **`ntoskrnl`/`hal` export shim**, driven by real driver imports.
+10. **Graphics/audio**: DXVK/VKD3D-style userland translation, once Win32
     processes run at all.
-12. **Anticheat requirements matrix**, documented, not spoofed.
+11. **Anticheat requirements matrix**, documented, never spoofed.
+
+## Known limitations
+
+- The parser handles PE32 and PE32+, but the committed fixtures are PE32+ only;
+  PE32 needs a fixture before M2 relies on it.
+- COFF long section names (`/nnn`) are stored verbatim; the loader must resolve
+  them against the string table.
+- The parser is fuzzed by mutation, not by a coverage-guided fuzzer; the
+  libFuzzer harness is proposed in `NEXT-STEPS.md`, not implemented.
+- Image mapping and execution will need hardening (W^X, no executable writes)
+  before any untrusted binary is run.
 
 ## Environment constraints
 
-- No KVM in this build VM (`/dev/kvm` unavailable); QEMU runs under TCG, so
-  tests are slow but functional. Boot gate is ~3 s to userspace in the M0
-  initramfs.
-- The module is built in an Arch chroot against `linux-headers 7.3.5.arch1-1`;
-  the kernel image is the one from the Forsteri ISO.
+- No KVM in this build VM; QEMU runs under TCG. The M0 initramfs gate is ~3 s;
+  a full live ISO boot is tens of seconds.
+- Module builds use `linux-headers 7.3.5-arch1-1` in an Arch chroot against the
+  Forsteri ISO kernel. Modules are self-signed by the kernel build and load
+  with a taint because `CONFIG_MODULE_SIG_FORCE` is not set.
 - Windows 11 media cannot be fetched programmatically and is not stored here.
-  Extracted binaries (`ntdll.dll`, `ntoskrnl.exe`, driver samples) are needed
-  for M1/M2 and must be supplied manually; see `SOURCES.md`.
-- Signing: modules are self-signed by the kernel build and load with a taint
-  because `CONFIG_MODULE_SIG_FORCE` is not set. An in-tree Forsteri kernel will
-  sign with the distribution key in a later stage.
+  Extracted binaries (`ntdll.dll`, `ntoskrnl.exe`, drivers) are needed for M2+
+  and must be supplied manually; see `SOURCES.md`.
+- The distribution tree is separate and still has no Git history of its own;
+  this repository owns the kernel work.
 
 ## Next
 
-M1: a PE parser with tests. See `ROADMAP.md` for the exit criterion and the
-next three tasks.
+M2: map a PE image, build PEB/TEB, and enter a static hello-world. The first
+task is the PEB/TEB layout note, before mapping code. See `ROADMAP.md`.

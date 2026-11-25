@@ -3,12 +3,10 @@ kernel/nt/*.o
 kernel/nt/*.ko
 kernel/nt/*.mod
 kernel/nt/*.mod.c
-kernel/nt/.ntpersonality.ko.cmd
-kernel/nt/.ntpersonality.o.cmd
-kernel/nt/.module.d
+kernel/nt/.*.cmd
+kernel/nt/.*.d
 kernel/nt/Module.symvers
 kernel/nt/modules.order
 kernel/nt/ntpersonality.mod
 kernel/nt/ntpersonality.mod.c
-kernel/nt/ntpersonality.o
 sources/

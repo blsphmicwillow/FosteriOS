@@ -10,30 +10,33 @@ are build-specific; record the build number in every coverage table.
 
 - Out-of-tree `ntpersonality` module, `/proc/forsteri_nt`, PE magic detection
   at `execve()`, QEMU serial boot gate.
-- Exit test: `scripts/run-m0.sh` prints `BOOT-TEST: PASS` on the distribution
-  kernel. Passing.
+- Exit test: `scripts/run-m0.sh` prints `BOOT-TEST: PASS`. Passing.
+- Live image: module loads through systemd and the real-image serial test
+  prints `FORSTERI-NT-TEST: PASS`.
 
-## M1 — PE/COFF parser (next)
+## M1 — PE/COFF parser ✅ (2026-11-25)
 
-Parse DOS/COFF/optional headers, section table, data directories, imports,
-exports, base relocations and TLS. Bounds-check everything; treat the image as
-hostile.
+- `kernel/nt/pe.c` + `pe.h`: allocation-free, bounds-checked parsing of headers,
+  sections, imports, exports, base relocations and TLS, PE32 and PE32+.
+- Exit test: real mingw `.exe`/`.dll` fixtures plus malformed mutations under
+  ASan/UBSan; `scripts/test-pe.sh` prints `pe-test: PASS`.
+- Compiled into the module; M0 gate remains green.
 
-- Exit test: parse a mingw-built hello-world and a table of malformed images;
-  every field matches `objdump -x`; malformed inputs are rejected, never crash.
-- Keep it reusable in kernel context: no libc, fixed-width types, explicit
-  integer overflow checks.
+Caveats carried forward: fixtures are PE32+ only; long section names are stored
+as `/nnn`; coverage-guided fuzzing is not implemented yet.
 
-## M2 — image mapping, PEB/TEB, first PE execution
+## M2 — image mapping, PEB/TEB, first PE execution (next)
 
-Map sections, apply relocations, build the loader structures, enter a static
-hello-world. No imports yet beyond a loader-provided thunk page; the program
-writes through a direct `NtWriteFile` stub or a syscall gate.
+Map sections at their preferred base (or relocate), never map a page writable
+and executable at the same time, build the PEB/TEB and loader data, and enter a
+static hello-world. No imports beyond a loader-provided thunk page; the program
+reaches the kernel through a direct `NtWriteFile` stub or a temporary syscall
+gate.
 
 - Exit test: a static PE prints one line and exits with a known status; the
-  kernel reports the status.
-- Realistically requires the first `Nt*` entry point; if the syscall patch is
-  not ready, use a temporary `int 0x2e` gate for the test only.
+  kernel reports the status and the image's sections/relocations are verified
+  against the parse.
+- Requires the PEB/TEB layout note first (`docs/nt-compat/PEB.md`).
 
 ## M3 — NT syscall ABI (in-tree patch)
 
@@ -100,20 +103,22 @@ hiding. Hardware-rooted attestation is expected to be a hard gap; say so.
 
 ## Next three tasks
 
-1. M1: write `kernel/nt/pe.c` + `pe.h` with bounds-checked header parsing and a
-   host test harness (`tests/pe/`) covering valid and malformed images.
-2. M1: compare parsed output against `objdump -x` for a mingw hello-world and
-   add the malformed-image table to the test gate.
-3. M2 design: pin the PEB/TEB layout and loader data for the reference build,
-   from public symbols and `phnt`; write it in `docs/nt-compat/PEB.md` before
-   writing mapping code.
+1. M2 design: pin the PEB/TEB layout and loader data for the reference build
+   from public symbols and `phnt`; write `docs/nt-compat/PEB.md` before mapping
+   code.
+2. M2 code: map sections into a new address space with W^X, apply base
+   relocations, and unit-test mapping decisions against the M1 parse (no
+   execution yet).
+3. M2 execution: enter a static hello-world with a loader thunk for
+   `NtWriteFile`, capture its exit status, and make it the M2 gate.
 
 ## Risks
 
 - **Scope**: the NT kernel is decades of work. Prioritise what real binaries and
   real drivers import; do not aim for completeness.
 - **In-tree patches**: carrying a patch series means rebasing on every kernel
-  bump. Keep the diff minimal and test Linux userland after each rebase.
+  bump. Keep the diff minimal and test Linux userland after each rebase. The
+  patch queue and rebase gate are the top item in `NEXT-STEPS.md`.
 - **Driver signing**: a `.sys` signed for Windows will not validate against a
   FosteriOS chain. Test with test-signed builds; document the production gap.
 - **Anticheat**: attestation cannot be legitimately reproduced. Expect products

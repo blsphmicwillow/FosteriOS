@@ -87,6 +87,10 @@ an agent-driven investigation loop.
 | 2026-11-25 | Built and booted the M0 module on 7.3.5-arch1-1 | Module loads, `/proc` works, binfmt handler invoked, synthetic PE recognised, `execve` returns `ENOEXEC` |
 | 2026-11-25 | Checked `BINPRM_BUF_SIZE` and binfmt ABI in 7.3.5 headers | 256-byte buffer; `register_binfmt` returns void; `struct linux_binfmt` fields as used |
 | 2026-11-25 | Tested `execve` permission path | `execve` requires the execute bit; the harness sets 0755 on the stub |
+| 2026-11-25 | Built M1 fixtures with mingw-w64-gcc 16.2.0 | `hello.exe`: 19 sections, 9 import DLLs, 2 relocation blocks; `libfixture.dll`: 6 imports, 1 export |
+| 2026-11-25 | Ran `scripts/test-pe.sh` under ASan/UBSan | Valid-image assertions and all malformed mutations pass; `pe-test: PASS` |
+| 2026-11-25 | Parsed PE32+ headers against the PE spec offsets | `NumberOfRvaAndSizes` is at +108 for PE32+, +92 for PE32; data directories at +112/+96 |
+| 2026-11-25 | Booted the rebuilt live ISO with `forsteri.nt_test=1` | systemd loaded `ntpersonality`; `/proc/forsteri_nt` read from the live squashfs; `FORSTERI-NT-TEST: PASS` |
 
 ## Open questions
 

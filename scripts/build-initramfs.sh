@@ -3,7 +3,7 @@
 # a synthetic PE file. No distribution userland is involved, so a failure here
 # is a kernel/module failure, not a Forsteri one.
 #
-#   KERNEL=7.3.5-arch1-1 scripts/build-initramfs.sh
+#   BUSYBOX=/usr/bin/busybox scripts/build-initramfs.sh
 #
 # Environment:
 #   BUSYBOX   static busybox binary (default: busybox in PATH)

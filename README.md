@@ -1,6 +1,6 @@
 # FosteriOS
 
-FosteriOS is the NT-compatibility effort for [Forsteri OS](../forsteri). It
+FosteriOS is the NT-compatibility effort for the Forsteri OS distribution. It
 keeps the Linux kernel as the machine's kernel — drivers, filesystems,
 scheduler, hardware support — and grows Windows NT kernel semantics inside it,
 so that PE/COFF binaries and, eventually, WDM/KMDF-style drivers can run on a
@@ -10,37 +10,43 @@ This repository is the kernel-side work. The distribution (archiso image,
 `forst` package manager, installer, desktops, themes) lives in the Forsteri
 repository.
 
-## Status: M0
+## Status: M0 and M1
 
-M0 is a boot-tested kernel-module skeleton. It proves the plumbing, not the
-compatibility:
+**M0 — kernel plumbing, boot-tested.** An out-of-tree `ntpersonality` module
+builds against the distribution kernel (7.3.5-arch1-1), loads in QEMU, exposes
+`/proc/forsteri_nt`, and registers a `linux_binfmt` that recognises `MZ`/`PE\0\0`
+images at `execve()` time and returns `-ENOEXEC` because no image loader exists
+yet.
 
-- an out-of-tree `ntpersonality` module builds against the distribution kernel
-  (7.3.5-arch1-1) and loads in QEMU;
-- it exposes `/proc/forsteri_nt` with version, stage and counters;
-- it registers a `linux_binfmt` that recognises `MZ`/`PE\0\0` images at
-  `execve()` time, logs them, and returns `-ENOEXEC` because no image loader
-  exists yet.
+**M1 — PE/COFF parser, host-tested and compiled into the module.** A
+bounds-checked, allocation-free parser covers DOS/COFF/optional headers,
+sections, imports, exports, base relocations and TLS, for PE32 and PE32+. It is
+tested against real mingw-built `.exe`/`.dll` fixtures and a mutation table
+under ASan/UBSan. It does not load anything yet.
 
-That last point is deliberate. A recognised-but-unloadable format must fail the
-way the kernel fails every unknown format, not pretend to run.
+The live ISO integration is in the Forsteri tree: systemd loads the module on a
+normal boot, and an opt-in serial self-test (`forsteri.nt_test=1`) verifies
+`/proc/forsteri_nt` from the real live image. Both the synthetic M0 gate and the
+real-image test pass.
 
 ## Build and test
 
-Requirements: Arch/Fosteri with `base-devel`, `linux-headers` matching the
-running kernel, `busybox`, `cpio`, `qemu-system-x86`. On a normal Forsteri
-machine:
+Requirements for the kernel tests: Arch/Fosteri with `base-devel`,
+`linux-headers` matching the running kernel, `busybox`, `cpio`,
+`qemu-system-x86`. For the parser tests: a host C compiler with ASan/UBSan.
 
 ```sh
+# PE parser: real images + malformed mutations, ASan/UBSan
+scripts/test-pe.sh
+
+# M0 boot gate: module + minimal initramfs + QEMU assertions
 scripts/run-m0.sh
 ```
 
-The script builds the module, builds a minimal initramfs (busybox + module + two
-static test helpers), boots it with QEMU, and greps the serial log for
-`BOOT-TEST: PASS`. Any kernel or module failure fails the script.
-
-Explicit paths, useful on a build host whose running kernel differs from the
-target:
+The M0 gate builds the module, builds a minimal initramfs (busybox + module +
+two static helpers), boots it with QEMU and greps the serial log for
+`BOOT-TEST: PASS`. Explicit paths, useful when the build host kernel differs
+from the target:
 
 ```sh
 KVER=7.3.5-arch1-1 \
@@ -53,10 +59,11 @@ scripts/run-m0.sh
 ## Layout
 
 ```
-kernel/nt/            ntpersonality module (M0)
-scripts/              build-module, build-initramfs, boot-test, run-m0
+kernel/nt/            ntpersonality module (M0) and pe.c/pe.h (M1)
+tests/pe/             host tests and mingw-built fixtures
+scripts/              test-pe, build-module, build-initramfs, boot-test, run-m0
 docs/ARCHITECTURE.md  why Linux + NT personality, and what that costs
-docs/nt-compat/       state, roadmap, source log
+docs/nt-compat/       state, roadmap, source log, ranked next steps
 ```
 
 ## What this is not
