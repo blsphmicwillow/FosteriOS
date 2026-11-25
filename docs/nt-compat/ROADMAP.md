@@ -26,6 +26,14 @@ Caveats carried forward: PE32 and PE32+ are covered, other machines are not;
 long section names are stored as `/nnn`; coverage-guided fuzzing is not
 implemented yet.
 
+## Checkpoint after M1 (2026-11-25)
+
+M1 is the latest implemented milestone. `scripts/test-pe.sh` was re-run after
+moving the tree and passes. The M0 boot gate and the live-image serial test
+were not re-run: this machine has no QEMU, kernel headers or ISO. M2 below is
+not started: no PEB, mapping, relocation application or PE execution exists
+yet.
+
 ## M2 — image mapping, PEB/TEB, first PE execution (next)
 
 Map sections at their preferred base (or relocate), never map a page writable
