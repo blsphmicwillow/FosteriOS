@@ -52,6 +52,17 @@ The parser is compiled into `ntpersonality.ko` (composite module) so kernel
 context compilation is part of the gate, and the M0 QEMU gate still passes with
 it linked in.
 
+### M2 mapping groundwork (host gate)
+
+`kernel/nt/pe_map.c` builds a page plan for headers and sections, rejects
+overlaps and any section that is both writable and executable, copies the file
+image into a caller-owned buffer, and applies `ABSOLUTE`, `HIGH`, `LOW`,
+`HIGHLOW` and `DIR64` base relocations. `kernel/nt/nt_peb.c` writes only the
+loader-owned x64 PEB/TEB pointers and IDs; the layout is documented in
+`PEB.md`. `scripts/test-pe.sh` runs the parser, mapping and PEB/TEB gates under
+ASan/UBSan. This is mapping groundwork, not execution: no address space is
+allocated and no PE entry point is entered.
+
 ### Live ISO integration
 
 The Forsteri ISO was rebuilt with the module in the live `airootfs` and a
@@ -74,13 +85,16 @@ FORSTERI-NT-TEST: PASS
 
 ## What this is not
 
-No Windows binary has been mapped or executed. M1 parses an image; it does not
-load one. There is no PEB/TEB, no `ntdll`, no NT syscall dispatcher, no object
+No Windows binary has been mapped or executed. M1 parses an image; M2 has
+host-tested mapping decisions and a PEB/TEB layout, but no kernel call site
+maps an image. There is no `ntdll`, no NT syscall dispatcher, no object
 manager, no registry, no I/O manager, no driver loading.
 
 ## Missing, in dependency order
 
-1. **Image mapping**: map sections, apply relocations, W^X, build PEB/TEB.
+1. **Image mapping**: page plan, W^X/overlap decisions, relocations and
+   PEB/TEB layout are host-tested; the kernel address-space allocation, import
+   thunk and first entry are still missing.
 2. **A minimal `ntdll`/`kernel32`** sufficient for a static hello-world.
 3. **NT syscall dispatch**: in-tree patch to the x86-64 entry path, per-task
    format flag, NT syscall table and coverage tracking. A module cannot do this
@@ -124,5 +138,6 @@ manager, no registry, no I/O manager, no driver loading.
 
 ## Next
 
-M2: map a PE image, build PEB/TEB, and enter a static hello-world. The first
-task is the PEB/TEB layout note, before mapping code. See `ROADMAP.md`.
+M2: wire the host-tested plan into a real address space, build the import
+thunk, enter a static hello-world and capture its exit status. The layout note
+and mapping groundwork are done. See `ROADMAP.md`.
