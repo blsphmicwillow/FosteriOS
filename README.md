@@ -21,8 +21,8 @@ yet.
 **M1 — PE/COFF parser, host-tested and compiled into the module.** A
 bounds-checked, allocation-free parser covers DOS/COFF/optional headers,
 sections, imports, exports, base relocations and TLS, for PE32 and PE32+. It is
-tested against real mingw-built `.exe`/`.dll` fixtures and a mutation table
-under ASan/UBSan. It does not load anything yet.
+tested against real mingw-built PE32 and PE32+ `.exe`/`.dll` fixtures and a
+mutation table under ASan/UBSan. It does not load anything yet.
 
 The live ISO integration is in the Forsteri tree: systemd loads the module on a
 normal boot, and an opt-in serial self-test (`forsteri.nt_test=1`) verifies

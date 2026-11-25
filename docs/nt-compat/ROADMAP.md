@@ -22,8 +22,9 @@ are build-specific; record the build number in every coverage table.
   ASan/UBSan; `scripts/test-pe.sh` prints `pe-test: PASS`.
 - Compiled into the module; M0 gate remains green.
 
-Caveats carried forward: fixtures are PE32+ only; long section names are stored
-as `/nnn`; coverage-guided fuzzing is not implemented yet.
+Caveats carried forward: PE32 and PE32+ are covered, other machines are not;
+long section names are stored as `/nnn`; coverage-guided fuzzing is not
+implemented yet.
 
 ## M2 — image mapping, PEB/TEB, first PE execution (next)
 

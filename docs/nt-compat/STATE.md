@@ -39,6 +39,8 @@ Evidence from `scripts/test-pe.sh` (ASan + UBSan, `-fno-sanitize-recover=all`):
 
 - `hello.exe` (mingw, 19 sections): machine `0x8664`, PE32+, entry `0x1440`,
   image base `0x140000000`, 9 import DLLs, 2 relocation blocks, no exports.
+- `hello32.exe` (PE32): machine `0x14c`, entry `0x401460`, image base
+  `0x400000`, imports and relocations present, no exports.
 - `libfixture.dll`: 6 import DLLs, 1 named export `forsteri_test_export`,
   ordinal 1.
 - Mutation table (truncations, bad signatures, huge counts, overflowing RVAs,
@@ -98,8 +100,8 @@ manager, no registry, no I/O manager, no driver loading.
 
 ## Known limitations
 
-- The parser handles PE32 and PE32+, but the committed fixtures are PE32+ only;
-  PE32 needs a fixture before M2 relies on it.
+- PE32 and PE32+ are both covered by fixtures now; other machines (ARM64) are
+  parsed structurally but not tested.
 - COFF long section names (`/nnn`) are stored verbatim; the loader must resolve
   them against the string table.
 - The parser is fuzzed by mutation, not by a coverage-guided fuzzer; the

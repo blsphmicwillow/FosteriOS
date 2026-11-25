@@ -485,6 +485,8 @@ bool pe_parse(const void *data, size_t size, struct pe_image *img,
 	    !pe_u16(&t, opt + 70, &t.dll_characteristics))
 		return pe_fail(err, err_cap, "truncated optional header");
 	nrva_off = magic == PE_OPT_MAGIC_PE32P ? 108 : 92;
+	if (size_opt < nrva_off + 4)
+		return pe_fail(err, err_cap, "optional header too small for its magic");
 	if (!pe_u32(&t, opt + nrva_off, &nrva))
 		return pe_fail(err, err_cap, "truncated optional header");
 

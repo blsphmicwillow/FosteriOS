@@ -187,6 +187,45 @@ static void test_valid_exe(const char *dir)
 	free(buf);
 }
 
+static void test_valid_exe32(const char *dir)
+{
+	char path[512];
+	uint8_t *buf = NULL;
+	size_t len = 0, i;
+	struct pe_image img;
+	char err[160];
+	int found_dll = 0;
+
+	snprintf(path, sizeof path, "%s/hello32.exe", dir);
+	if (load_file(path, &buf, &len) != 0) {
+		failures++;
+		return;
+	}
+	CHECK(pe_parse(buf, len, &img, err, sizeof err));
+	CHECK(img.machine == 0x14c);
+	CHECK(img.optional_magic == PE_OPT_MAGIC_PE32);
+	CHECK(img.num_sections >= 5);
+	CHECK(img.entry_point != 0);
+	CHECK(img.image_base >= 0x10000);
+	CHECK(img.import_dll_count >= 1);
+	CHECK(img.export_count == 0);
+	CHECK(img.reloc_block_count >= 1);
+
+	for (i = 0; i < img.import_dll_count; i++) {
+		char name[PE_NAME_MAX];
+		uint32_t iat = 0, thunks = 0;
+
+		CHECK(pe_import_dll(&img, i, name, sizeof name, &iat, &thunks));
+		CHECK(iat != 0);
+		CHECK(thunks > 0);
+		if (strstr(name, "KERNEL32.dll") || strstr(name, "kernel32.dll"))
+			found_dll = 1;
+	}
+	CHECK(found_dll);
+	CHECK(pe_rva_to_offset(&img, img.entry_point, 1, NULL));
+	free(buf);
+}
+
 static void test_valid_dll(const char *dir)
 {
 	char path[512];
@@ -394,6 +433,7 @@ int main(int argc, char **argv)
 
 	printf("pe-test: fixtures %s\n", dir);
 	test_valid_exe(dir);
+	test_valid_exe32(dir);
 	test_valid_dll(dir);
 	test_malformed(dir);
 
