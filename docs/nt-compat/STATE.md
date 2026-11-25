@@ -60,8 +60,10 @@ image into a caller-owned buffer, and applies `ABSOLUTE`, `HIGH`, `LOW`,
 `HIGHLOW` and `DIR64` base relocations. `kernel/nt/nt_peb.c` writes only the
 loader-owned x64 PEB/TEB pointers and IDs; the layout is documented in
 `PEB.md`. `scripts/test-pe.sh` runs the parser, mapping and PEB/TEB gates under
-ASan/UBSan. This is mapping groundwork, not execution: no address space is
-allocated and no PE entry point is entered.
+ASan/UBSan. The CI ISO build also compiles both new objects into
+`ntpersonality.ko` against the live 7.3.5-arch1-1 headers. This is mapping
+groundwork, not execution: no address space is allocated and no PE entry point
+is entered.
 
 ### Live ISO integration
 
@@ -120,8 +122,8 @@ manager, no registry, no I/O manager, no driver loading.
   them against the string table.
 - The parser is fuzzed by mutation, not by a coverage-guided fuzzer; the
   libFuzzer harness is proposed in `NEXT-STEPS.md`, not implemented.
-- Image mapping and execution will need hardening (W^X, no executable writes)
-  before any untrusted binary is run.
+- The host mapping plan rejects W^X and overlaps, but the kernel mapping path
+  and the first entry are still unwritten; do not run untrusted images yet.
 
 ## Environment constraints
 
@@ -133,8 +135,8 @@ manager, no registry, no I/O manager, no driver loading.
 - Windows 11 media cannot be fetched programmatically and is not stored here.
   Extracted binaries (`ntdll.dll`, `ntoskrnl.exe`, drivers) are needed for M2+
   and must be supplied manually; see `SOURCES.md`.
-- The distribution tree is separate and still has no Git history of its own;
-  this repository owns the kernel work.
+- The distribution tree is a separate Git repository
+  (`blsphmicwillow/Forsteri`); this repository owns the kernel work.
 
 ## Next
 
