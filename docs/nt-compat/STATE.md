@@ -1,4 +1,4 @@
-# State
+# FrostKernel state
 
 Updated: 2026-11-25. This file is the honest inventory. It is updated after
 every milestone, with evidence, before the roadmap.
