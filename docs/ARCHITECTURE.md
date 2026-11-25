@@ -1,8 +1,8 @@
-# Architecture: FrostKernel, an NT personality in Linux
+# Architecture: Frost, an NT personality in Linux
 
 ## Decision
 
-FrostKernel uses the **Linux kernel as the base kernel** and implements NT kernel
+Frost uses the **Linux kernel as the base kernel** and implements NT kernel
 architecture **inside it**, shipped with the Forsteri userland. The alternative
 routes (a greenfield kernel, or a microkernel hosting an NT server) were
 considered and rejected for this project because the distribution already
@@ -14,7 +14,7 @@ later stages do not discover them by surprise.
 
 ## Mapping
 
-| NT concept | Linux substrate | FrostKernel work |
+| NT concept | Linux substrate | Frost work |
 |---|---|---|
 | Process / thread | `task_struct`, `mm_struct` | per-task NT state, PEB/TEB, NT exit status, handle table |
 | Object manager | VFS, `kobject`, file descriptors | `\??\` namespace, object types, reference counts, NT handle tables |

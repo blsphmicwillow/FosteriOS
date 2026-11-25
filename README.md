@@ -1,13 +1,13 @@
-# FrostKernel
+# Frost
 
-FrostKernel is the kernel-side NT-compatibility effort for the Forsteri OS
+Frost is the kernel-side NT-compatibility effort for the Forsteri OS
 distribution, developed in the FosteriOS repository. It keeps the Linux kernel
 as the machine's kernel — drivers, filesystems,
 scheduler, hardware support — and grows Windows NT kernel semantics inside it,
 so that PE/COFF binaries and, eventually, WDM/KMDF-style drivers can run on a
 Forsteri system without a Windows kernel underneath.
 
-This repository contains FrostKernel. The distribution (archiso image,
+This repository contains Frost. The distribution (archiso image,
 `forst` package manager, installer, desktops, themes) lives in the Forsteri
 repository.
 

@@ -1,4 +1,4 @@
-# FrostKernel roadmap
+# Frost roadmap
 
 The order is deliberate: every stage ends with a test that fails today and
 passes when the stage is done. A stage is not "in progress" without a test.
